@@ -1,9 +1,25 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi_pagination import add_pagination, paginate, Page
 import httpx
 import uvicorn
 
 app = FastAPI()
+
+# enable CORS
+origins = [
+    "http://localhost",
+    "http://localhost:8080",
+    "*",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 POST_SERVICE_URL = "https://post-service-image-2-745799261495.us-east4.run.app/all_posts/"
 COMMENT_SERVICE_URL = "http://3.236.180.227:8000/comments/get_all_comments/"

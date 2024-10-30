@@ -48,7 +48,6 @@ async def fetch_all_comments():
                 "likes": comment["likes"],
                 "replies": comment2_by_comment1_id.get(comment_id, [])  # Attach replies
             })
-        print(structured_comments)
         return structured_comments
     except httpx.HTTPStatusError as e:
         print(f"HTTP error fetching comments: {e}")  # Log HTTP error

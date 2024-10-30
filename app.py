@@ -1,6 +1,8 @@
 from fastapi import FastAPI, HTTPException
 from fastapi_pagination import add_pagination, paginate, Page
 import httpx
+import uvicorn
+
 app = FastAPI()
 
 POST_SERVICE_URL = "https://post-service-image-2-745799261495.us-east4.run.app/all_posts/"
@@ -83,3 +85,5 @@ async def main_feed():
 
 add_pagination(app)
 
+if __name__ == "__main__":
+    uvicorn.run(app=app, host='0.0.0.0', port=8080)

@@ -3,6 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi_pagination import add_pagination, paginate, Page
 import httpx
 import uvicorn
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI()
 
@@ -21,8 +25,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-POST_SERVICE_URL = "https://post-service-image-2-745799261495.us-east4.run.app/all_posts/"
-COMMENT_SERVICE_URL = "http://3.236.180.227:8000/comments/get_all_comments/"
+POST_SERVICE_URL = os.getenv("POST_SERVICE_URL")
+COMMENT_SERVICE_URL = os.getenv("COMMENT_SERVICE_URL")
 
 @app.get("/")
 async def root():

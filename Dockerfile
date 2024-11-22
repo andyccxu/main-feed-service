@@ -3,6 +3,14 @@
 #
 FROM python:3.12-alpine
 
+
+# Look in the code. This is an environment variable
+# passed to the application.
+#
+ENV WHEREAMI=DOCKER
+
+ENV PORT 8080
+
 # The directory in the container where the app will run.
 #
 WORKDIR /app
@@ -19,12 +27,9 @@ COPY . .
 
 # Expose/publish port 5002 for the container.
 #
-EXPOSE 8080
+EXPOSE ${PORT}
 
-# Look in the code. This is an environment variable
-# passed to the application.
-#
-ENV WHEREAMI=DOCKER
-
-# Run the app.
-CMD ["python", "app.py"]
+# As an example here we're running the web service with one worker on uvicorn.
+CMD exec uvicorn main:app --host 0.0.0.0 --port ${PORT} --workers 1
+# test locally
+# uvicorn main:app --reload

@@ -2,11 +2,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_pagination import add_pagination, paginate, Page
 import httpx
-import uvicorn
-import os
-from dotenv import load_dotenv
+from google.cloud import secretmanager
 
-load_dotenv()
 
 app = FastAPI()
 
@@ -25,8 +22,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-POST_SERVICE_URL = os.getenv("POST_SERVICE_URL")
-COMMENT_SERVICE_URL = os.getenv("COMMENT_SERVICE_URL")
+
+def get_secret(resource_id: str) -> str:
+    """
+    Retrieve a secret from Google Secret Manager.
+    """
+    client = secretmanager.SecretManagerServiceClient()
+    name = f"{resource_id}/versions/latest"
+
+    response = client.access_secret_version(request={"name": name})
+    secret_payload = response.payload.data.decode("UTF-8")
+
+    return secret_payload
+
+POST_SERVICE_URL = get_secret("projects/745799261495/secrets/POST_SERVICE_URL")
+COMMENT_SERVICE_URL = get_secret("projects/745799261495/secrets/COMMENT_SERVICE_URL")
 
 @app.get("/")
 async def root():
@@ -105,5 +115,6 @@ async def main_feed():
 
 add_pagination(app)
 
-if __name__ == "__main__":
-    uvicorn.run(app=app, host='0.0.0.0', port=8080)
+
+# if __name__ == "__main__":
+#     uvicorn.run(app=app, host='0.0.0.0', port=8080)

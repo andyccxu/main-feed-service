@@ -76,7 +76,9 @@ app.add_middleware(
 POST_SERVICE_URL = get_secret("projects/745799261495/secrets/POST_SERVICE_URL")
 COMMENT_SERVICE_URL = get_secret(
     "projects/745799261495/secrets/COMMENT_SERVICE_URL")
-STORAGE_SERVICE_URL = get_secret("projects/745799261495/secrets/STORAGE_SERVICE_URL")
+STORAGE_SERVICE_URL = get_secret(
+    "projects/745799261495/secrets/STORAGE_SERVICE_URL")
+
 
 @app.get("/")
 async def root():
@@ -128,7 +130,7 @@ async def create_user_post(
             status_code=400, detail="Only JPEG or PNG images are allowed.")
 
     # Upload image to S3 bucket
-    image_object_key = ""
+    image_object_name = ""
     if image:
         image_content = await image.read()
         files = {'image': (image.filename, io.BytesIO(
@@ -136,7 +138,7 @@ async def create_user_post(
         async with httpx.AsyncClient() as client:
             try:
                 post_response = await client.post(f"{STORAGE_SERVICE_URL}/upload_image", files=files)
-                image_object_key = post_response.json()['image_key']
+                image_object_name = post_response.json()['image_key']
                 post_response.raise_for_status()
             except httpx.HTTPError as exc:
                 logger.error("Failed to upload image: %s", str(exc))
@@ -144,7 +146,10 @@ async def create_user_post(
                     status_code=500, detail="Failed to upload image to S3 bucket.")
 
     # Post Title and Content to Downstream Service
-    post_payload = {"title": title, "content": content}
+    post_payload = {"title": title,
+                    "content": content,
+                    "image_object_name": image_object_name,
+                    }
     async with httpx.AsyncClient() as client:
         try:
             post_response = await client.post(f"{POST_SERVICE_URL}/posts/", json=post_payload)
@@ -158,7 +163,7 @@ async def create_user_post(
 
     return {
         "message": "User post created successfully.",
-        "image_object_key": image_object_key,
+        "image_object_key": image_object_name,
         "post_data": post_data
     }
 

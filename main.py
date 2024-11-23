@@ -1,5 +1,7 @@
+import io
 import google.cloud.logging
-from fastapi import FastAPI, HTTPException, Request
+from typing import Annotated
+from fastapi import FastAPI, HTTPException, Request, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_pagination import add_pagination, paginate, Page
 import httpx
@@ -12,7 +14,6 @@ from service.main_feed import *
 ### logging set up# ##
 import time
 import logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Imports the Cloud Logging client library
@@ -71,10 +72,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
+# get secrets
 POST_SERVICE_URL = get_secret("projects/745799261495/secrets/POST_SERVICE_URL")
-COMMENT_SERVICE_URL = get_secret("projects/745799261495/secrets/COMMENT_SERVICE_URL")
-
+COMMENT_SERVICE_URL = get_secret(
+    "projects/745799261495/secrets/COMMENT_SERVICE_URL")
+STORAGE_SERVICE_URL = get_secret("projects/745799261495/secrets/STORAGE_SERVICE_URL")
 
 @app.get("/")
 async def root():
@@ -86,12 +88,12 @@ async def main_feed():
     try:
         # Fetch all posts from the post service
         async with httpx.AsyncClient() as client:
-            response = await client.get(POST_SERVICE_URL)
+            response = await client.get(f"{POST_SERVICE_URL}/all_posts/")
         response.raise_for_status()
         posts = response.json()
 
         # Fetch all comments once and filter them by post_id
-        comments = await fetch_all_comments(COMMENT_SERVICE_URL)
+        comments = await fetch_all_comments(f"{COMMENT_SERVICE_URL}/get_all_comments/")
         # Attach filtered comments to each post
         for post in posts:
             post_id = post.get("pid")
@@ -110,8 +112,55 @@ async def main_feed():
             status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
 
+@app.post("/user_post")
+async def create_user_post(
+    title: Annotated[str, Form()],
+    content: Annotated[str, Form()],
+    image: UploadFile = None
+):
+    """
+    Accept a user post with title, content, and an optional image attachment.
+    """
+
+    # Validate input
+    if image and image.content_type not in ["image/jpeg", "image/png"]:
+        raise HTTPException(
+            status_code=400, detail="Only JPEG or PNG images are allowed.")
+
+    # Upload image to S3 bucket
+    image_object_key = ""
+    if image:
+        image_content = await image.read()
+        files = {'image': (image.filename, io.BytesIO(
+            image_content), image.content_type)}
+        async with httpx.AsyncClient() as client:
+            try:
+                post_response = await client.post(f"{STORAGE_SERVICE_URL}/upload_image", files=files)
+                image_object_key = post_response.json()['image_key']
+                post_response.raise_for_status()
+            except httpx.HTTPError as exc:
+                logger.error("Failed to upload image: %s", str(exc))
+                raise HTTPException(
+                    status_code=500, detail="Failed to upload image to S3 bucket.")
+
+    # Post Title and Content to Downstream Service
+    post_payload = {"title": title, "content": content}
+    async with httpx.AsyncClient() as client:
+        try:
+            post_response = await client.post(f"{POST_SERVICE_URL}/posts/", json=post_payload)
+            post_response.raise_for_status()
+        except httpx.HTTPError as exc:
+            logger.error("Failed to post title and content: %s", str(exc))
+            raise HTTPException(
+                status_code=500, detail="Failed to save post content.")
+
+    post_data = post_response.json()
+
+    return {
+        "message": "User post created successfully.",
+        "image_object_key": image_object_key,
+        "post_data": post_data
+    }
+
+
 add_pagination(app)
-
-
-# if __name__ == "__main__":
-#     uvicorn.run(app=app, host='0.0.0.0', port=8080)

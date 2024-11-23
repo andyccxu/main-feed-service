@@ -4,6 +4,13 @@ This composite service provides endpoints for the UI app to interact with our do
 
 Please check out the OpenAPI documentation [here](https://main-feed-service-745799261495.us-east4.run.app/docs).
 
+
+To run this service locally, use
+
+```shell
+uvicorn main:app --reload 
+```
+
 ## Deployment
 
 The deployed gateway URL is 

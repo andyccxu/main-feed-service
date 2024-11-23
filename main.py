@@ -4,6 +4,19 @@ from fastapi_pagination import add_pagination, paginate, Page
 import httpx
 from google.cloud import secretmanager
 
+import logging
+
+# Imports the Cloud Logging client library
+import google.cloud.logging
+
+# Instantiates a client
+client = google.cloud.logging.Client()
+
+# Retrieves a Cloud Logging handler based on the environment
+# you're running in and integrates the handler with the
+# Python logging module. By default this captures all logs
+# at INFO level and higher
+client.setup_logging()
 
 app = FastAPI()
 
@@ -90,12 +103,15 @@ async def fetch_all_comments():
 
 @app.get("/main_feed", response_model=Page[dict])
 async def main_feed():
+    logging.info("Incoming request for GET /main_feed")
+
     try:
         # Fetch all posts from the post service
         async with httpx.AsyncClient() as client:
             response = await client.get(POST_SERVICE_URL)
         response.raise_for_status()
         posts = response.json()
+
         # Fetch all comments once and filter them by post_id
         comments = await fetch_all_comments()
         # Attach filtered comments to each post

@@ -15,6 +15,8 @@ ENV PORT 8080
 #
 WORKDIR /app
 
+RUN apk add --no-cache gcc python3-dev musl-dev linux-headers
+
 # Copy the requirements.txt file from the project directory into the working
 # directory and install the requirements.
 #

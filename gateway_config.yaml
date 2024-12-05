@@ -1,0 +1,68 @@
+# openapi doc for our Gateway API
+swagger: '2.0'
+info:
+  title: Gateway API
+  description: Sample API Gateway with a Cloud Run backend
+  version: 1.0.2
+schemes:
+- https
+produces:
+- application/json
+x-google-backend:
+  # this is the deployed address for our composite service in Cloud Run
+  address: https://main-feed-service-745799261495.us-east4.run.app
+securityDefinitions:
+  # https://cloud.google.com/api-gateway/docs/authenticating-users-googleid
+  # putting it at the global level should suffice
+  google_id_token:
+    authorizationUrl: ""
+    flow: "implicit"
+    type: "oauth2"
+    x-google-issuer: "https://accounts.google.com"
+    x-google-jwks_uri: "https://www.googleapis.com/oauth2/v3/certs"
+    x-google-audiences: "745799261495-avvrllddrvmc56k5jqtm691p1n3tg1kr.apps.googleusercontent.com"
+security:
+  - google_id_token: []
+# enable CORS
+host: "w4153-test2.endpoints.w4153-cloud-computing.cloud.goog"
+x-google-endpoints:
+- name: "w4153-test2.endpoints.w4153-cloud-computing.cloud.goog"
+  allowCors: True
+paths:
+  /:
+    get:
+      summary: hello world
+      operationId: hello
+      responses:
+        '200':
+          description: A successful response
+  /main_feed:
+    options:
+      summary: Handle CORS preflight requests
+      operationId: optionsMainFeed
+      responses:
+        '204':
+          description: No Content
+      security: []
+    get:
+      summary: Get main feed for user posts and comments
+      operationId: getMainFeed
+      responses:
+        '200':
+          description: A successful response
+  /exchange_token_with_google:
+    options:
+      summary: Handle CORS preflight requests
+      operationId: options_exchange_token_with_google
+      responses:
+        '204':
+          description: No Content
+      security: []
+    get:
+      summary: Exchange security token with Google ID
+      operationId: exchange_token_with_google
+      responses:
+        '200':
+          description: A successful response
+      x-google-backend:
+        address: https://security-manager-745799261495.us-east4.run.app/exchange_token_with_google_id

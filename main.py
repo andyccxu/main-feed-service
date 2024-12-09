@@ -1,12 +1,14 @@
 import io
 import google.cloud.logging
 from typing import Annotated
-from fastapi import FastAPI, HTTPException, Request, UploadFile, Form
+from fastapi import FastAPI, HTTPException, Request, UploadFile, Form, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_pagination import add_pagination, paginate, Page
 import httpx
 import random
 import string
+
+from middleware import SecurityTokenMiddleware
 
 from service.gcloud_secret import get_secret
 from service.main_feed import *
@@ -16,7 +18,7 @@ import time
 import logging
 logger = logging.getLogger(__name__)
 
-# Imports the Cloud Logging client library
+# * Imports the Cloud Logging client library
 
 # Instantiates a client
 client = google.cloud.logging.Client()
@@ -30,7 +32,18 @@ client.setup_logging()
 ### create fastapi application ###
 app = FastAPI()
 
+# Add middleware for checking user scopes
+SECRET_KEY = get_secret(
+    "projects/745799261495/secrets/SECURITY_MANAGER_SECRET_KEY")
+REQUIRED_SCOPE = "mainfeed"
 
+app.add_middleware(
+    SecurityTokenMiddleware,
+    secret_key=SECRET_KEY,
+    required_scope=REQUIRED_SCOPE,
+)
+
+# Add middleware for logging
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     """Middleware on each resource that implements before and after logging for all methods/paths.
@@ -52,8 +65,10 @@ async def log_requests(request: Request, call_next):
 
     process_time = (time.time() - start_time) * 1000
     formatted_process_time = '{0:.2f}'.format(process_time)
-    logger.info(f"cid={cid} | request completed in={
-                formatted_process_time} ms | status_code={response.status_code}")
+    logger.info(
+        f"cid={cid} | request completed in={
+            formatted_process_time} ms | status_code={response.status_code}"
+    )
 
     return response
 
@@ -86,11 +101,16 @@ async def root():
 
 
 @app.get("/main_feed", response_model=Page[dict])
-async def main_feed():
+async def main_feed(
+    # extract the token from the request header
+    x_security_token: str = Header(...),
+):
+    # propagate to downtream service
+    headers = {"X-Security-Token": x_security_token}
     try:
         # Fetch all posts from the post service
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{POST_SERVICE_URL}/all_posts/")
+            response = await client.get(f"{POST_SERVICE_URL}/all_posts/", headers=headers)
         response.raise_for_status()
         posts = response.json()
 
@@ -106,12 +126,8 @@ async def main_feed():
         return paginate(posts)
     except httpx.HTTPStatusError as e:
         logger.error(f"HTTP error fetching posts: {e}")
-        raise HTTPException(status_code=e.response.status_code,
-                            detail="Error fetching posts.")
     except Exception as e:
         logger.error(f"Unexpected error fetching posts: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
 
 @app.post("/user_post")
@@ -130,7 +146,7 @@ async def create_user_post(
             status_code=400, detail="Only JPEG or PNG images are allowed.")
 
     # Upload image to S3 bucket
-    image_object_name = ""
+    image_object_name = None
     if image:
         image_content = await image.read()
         files = {'image': (image.filename, io.BytesIO(
@@ -142,8 +158,6 @@ async def create_user_post(
                 post_response.raise_for_status()
             except httpx.HTTPError as exc:
                 logger.error("Failed to upload image: %s", str(exc))
-                raise HTTPException(
-                    status_code=500, detail="Failed to upload image to S3 bucket.")
 
     # Post Title and Content to Downstream Service
     post_payload = {"title": title,
@@ -156,8 +170,6 @@ async def create_user_post(
             post_response.raise_for_status()
         except httpx.HTTPError as exc:
             logger.error("Failed to post title and content: %s", str(exc))
-            raise HTTPException(
-                status_code=500, detail="Failed to save post content.")
 
     post_data = post_response.json()
 

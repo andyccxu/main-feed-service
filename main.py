@@ -31,6 +31,7 @@ client.setup_logging()
 
 ### create fastapi application ###
 app = FastAPI()
+add_pagination(app)
 
 # Add middleware for checking user scopes
 SECRET_KEY = get_secret(
@@ -113,6 +114,7 @@ async def main_feed(
             response = await client.get(f"{POST_SERVICE_URL}/all_posts/", headers=headers)
         response.raise_for_status()
         posts = response.json()
+        posts.reverse()
 
         # Fetch all comments once and filter them by post_id
         comments = await fetch_all_comments(f"{COMMENT_SERVICE_URL}/get_all_comments/")
@@ -178,6 +180,3 @@ async def create_user_post(
         "image_object_key": image_object_name,
         "post_data": post_data
     }
-
-
-add_pagination(app)

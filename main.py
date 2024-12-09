@@ -58,7 +58,7 @@ async def log_requests(request: Request, call_next):
     """
     # generate a correlation id for each request
     cid = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
-    logger.info(f"rid={cid} | request started | path={request.url.path}")
+    logger.info(f"cid={cid} | request started | path={request.url.path}")
     start_time = time.time()
 
     response = await call_next(request)
@@ -75,8 +75,8 @@ async def log_requests(request: Request, call_next):
 # enable CORS
 origins = [
     "http://localhost",
-    "http://localhost:8080",
-    "*",
+    "http://localhost:5173",
+    "https://ui-app-745799261495.us-east4.run.app",
 ]
 
 app.add_middleware(

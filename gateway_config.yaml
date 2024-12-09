@@ -3,7 +3,7 @@ swagger: '2.0'
 info:
   title: Gateway API
   description: Sample API Gateway with a Cloud Run backend
-  version: 1.0.2
+  version: 1.0.4
 schemes:
 - https
 produces:
@@ -47,6 +47,20 @@ paths:
     get:
       summary: Get main feed for user posts and comments
       operationId: getMainFeed
+      responses:
+        '200':
+          description: A successful response
+  /user_post:
+    options:
+      summary: Handle CORS preflight requests
+      operationId: optionsUserPost
+      responses:
+        '204':
+          description: No Content
+      security: []
+    post:
+      summary: Publish a new post to main feed
+      operationId: publishUserPost
       responses:
         '200':
           description: A successful response

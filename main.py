@@ -27,7 +27,7 @@ client = google.cloud.logging.Client()
 client.setup_logging()
 
 # OpenAI API Key
-OPENAI_API_KEY = "openai-api-key"  # 请替换为实际的 OpenAI 密钥
+OPENAI_API_KEY = "openai-api-key"  
 
 ### Create FastAPI application ###
 app = FastAPI()

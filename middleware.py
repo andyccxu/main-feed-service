@@ -9,14 +9,20 @@ class SecurityTokenMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.secret_key = secret_key
         self.required_scope = required_scope
+        self.excluded_paths = ["/docs", "/openapi.json", "/redoc"]
 
     async def dispatch(self, request: Request, call_next):
+        # Allow exception: show openapi doc
+        if request.url.path in self.excluded_paths:
+            return await call_next(request)
+
         # Check for X-Security-Token header - sent from UI app
         token = request.headers.get("X-Security-Token")
         if not token:
             return JSONResponse(
                 status_code=401, content={"detail": "X-Security-Token header is missing"}
             )
+
 
         try:
             # Decode the JWT token

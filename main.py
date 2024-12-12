@@ -102,7 +102,7 @@ async def root():
 
 
 @app.get("/main_feed", response_model=Page[dict])
-async def main_feed(
+async def get_main_feed(
     # extract the token from the request header
     x_security_token: str = Header(...),
 ):
